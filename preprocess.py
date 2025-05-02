@@ -9,9 +9,10 @@ import os
 import glob
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from scipy.spatial import cKDTree
 
 def get_nearest_points_to_voxel_centers(points, min_bound, voxel_size, resolution):
-    device = points.device
+    """device = points.device
     lin_coords = torch.arange(resolution, device=device) + 0.5
     grid_x, grid_y, grid_z = torch.meshgrid(lin_coords, lin_coords, lin_coords, indexing="ij")
     grid = torch.stack([grid_x, grid_y, grid_z], dim=-1)  # [R, R, R, 3]
@@ -26,7 +27,25 @@ def get_nearest_points_to_voxel_centers(points, min_bound, voxel_size, resolutio
     nearest_points = points[0, nearest_idx]           # [V, 3]
 
     nearest_points_grid = nearest_points.view(resolution, resolution, resolution, 3)  # [R, R, R, 3]
-    return nearest_points_grid
+    return nearest_points_grid"""
+    points_np = points.detach().cpu().numpy()  # [N, 3]
+    min_bound = min_bound.detach().cpu().numpy()  # [3]
+    voxel_size = voxel_size.detach().cpu().numpy()  # [3]
+
+    # 构造体素中心
+    lin_coords = np.arange(resolution) + 0.5
+    grid_x, grid_y, grid_z = np.meshgrid(lin_coords, lin_coords, lin_coords, indexing="ij")
+    centers = np.stack([grid_x, grid_y, grid_z], axis=-1) * voxel_size + min_bound  # [R, R, R, 3]
+    centers_flat = centers.reshape(-1, 3)  # [V, 3]
+
+    # 构建 KDTree 并查询最近点索引
+    tree = cKDTree(points_np)
+    _, idx = tree.query(centers_flat, k=1)  # [V]
+
+    # 获取最近点
+    nearest_points = points_np[idx]  # [V, 3]
+    nearest_points_tensor = torch.from_numpy(nearest_points).to(points.device).view(resolution, resolution, resolution, 3)
+    return nearest_points_tensor
 
 class MyDataset(Dataset):
     def __init__(self, data_dir, rotate=True, point_num=1000, num_workers=8):
