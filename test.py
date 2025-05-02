@@ -18,12 +18,12 @@ dataloader_test=DataLoader(
 #settings
 hasaxis=False
 use_chamfer=False
-weight=0
+weight=25
 
 #network
 net=Network(device,verbose=True).to(device)
 loss=AllLoss(device,hasaxis=hasaxis,weight=weight,use_chamfer=use_chamfer).to(device)
-net.load_state_dict(torch.load("models/model_weights_iter200.pth"))# best model 200 iter
+net.load_state_dict(torch.load("models/model_weights_final.pth"))# best model 200 iter
 
 net.eval()
 
