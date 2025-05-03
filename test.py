@@ -10,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #dataset
 dataloader_test=DataLoader(
-    MyDataset('meshes/test2',rotate=False),
+    MyDataset('meshes/test_chair',rotate=False),
     batch_size=1,
     shuffle=True
 )
@@ -23,7 +23,9 @@ weight=25
 #network
 net=Network(device,verbose=True).to(device)
 loss=AllLoss(device,hasaxis=hasaxis,weight=weight,use_chamfer=use_chamfer).to(device)
-net.load_state_dict(torch.load("models_new2/model_weights_epoch_100.pth"))# best model 100 iter
+net.load_state_dict(torch.load("models_chair/model_weights_epoch_100.pth"))
+#table 160 epoch best
+#chair 100 epoch best
 
 net.eval()
 

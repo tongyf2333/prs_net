@@ -36,7 +36,7 @@ def create_voxel_grid(mesh, grid_size=32):
 
 
 if __name__ == "__main__":
-    mesh = load_mesh('chair5_new.obj')
+    mesh = load_mesh('meshes/test_table1/table1.obj')
     voxel_grid, voxel_size, min_bound = create_voxel_grid(mesh, grid_size=32)
     print("Voxel grid shape:", voxel_grid.shape)
     print("Voxel size:", voxel_size)
