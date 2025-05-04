@@ -13,7 +13,7 @@ class AllLoss(torch.nn.Module):
         self.reg_loss_fn = RegularizationLoss(device,hasaxis)
         self.sym_loss_fn = SymmetricLoss
 
-    def forward(self, points, voxel_size, min_bound, near_point,plane_x, plane_y, plane_z, rot_x, rot_y, rot_z):
+    def forward(self, points,near_point,plane_x, plane_y, plane_z, rot_x, rot_y, rot_z):
         # points: [b,n,3]
         # voxel_grid: [b,c,h,w,d]
         # voxel_size: [b]
@@ -32,9 +32,9 @@ class AllLoss(torch.nn.Module):
             loss_plane_z = chamfer_distance_manual(sym_points_plane_z, points)
             loss += loss_plane_x + loss_plane_y + loss_plane_z
         else:
-            loss_plane_x = self.sym_loss_fn(sym_points_plane_x, near_point, min_bound, voxel_size)
-            loss_plane_y = self.sym_loss_fn(sym_points_plane_y, near_point, min_bound, voxel_size)
-            loss_plane_z = self.sym_loss_fn(sym_points_plane_z, near_point, min_bound, voxel_size)
+            loss_plane_x = self.sym_loss_fn(sym_points_plane_x, near_point)
+            loss_plane_y = self.sym_loss_fn(sym_points_plane_y, near_point)
+            loss_plane_z = self.sym_loss_fn(sym_points_plane_z, near_point)
             loss += loss_plane_x + loss_plane_y + loss_plane_z
         
         if self.hasaxis:
@@ -43,23 +43,26 @@ class AllLoss(torch.nn.Module):
                 loss_rot_y= chamfer_distance_manual(sym_points_rot_y, points)
                 loss_rot_z= chamfer_distance_manual(sym_points_rot_z, points)
             else:
-                loss_rot_x = self.sym_loss_fn(sym_points_rot_x, near_point, min_bound, voxel_size)
-                loss_rot_y = self.sym_loss_fn(sym_points_rot_y, near_point, min_bound, voxel_size)
-                loss_rot_z = self.sym_loss_fn(sym_points_rot_z, near_point, min_bound, voxel_size)
+                loss_rot_x = self.sym_loss_fn(sym_points_rot_x, near_point)
+                loss_rot_y = self.sym_loss_fn(sym_points_rot_y, near_point)
+                loss_rot_z = self.sym_loss_fn(sym_points_rot_z, near_point)
             loss += loss_rot_x + loss_rot_y + loss_rot_z
         return loss
 
 # Example usage
 if __name__ == "__main__":
+    # Example usage
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    all_loss_fn = AllLoss(device, hasaxis=True, use_chamfer=False)
-    
-    # Dummy data for testing
-    points = torch.randn(10, 1024, 3).to(device)
-    voxel_grid = torch.randn(10, 32, 32, 32, 3).to(device)
-    voxel_size = torch.randn(10).to(device)
-    min_bound = torch.randn(10, 3).to(device)
-    near_point = torch.randn(10, 1024, 3).to(device)
+    points = torch.randn(2, 1024, 3).to(device)
+    voxel = torch.randn(2, 3, 32, 32, 32).to(device)
+    near_point = torch.randn(2, 32, 32, 32, 3).to(device)
+    plane_x = torch.randn(2, 4).to(device)
+    plane_y = torch.randn(2, 4).to(device)
+    plane_z = torch.randn(2, 4).to(device)
+    rot_x = torch.randn(2, 4).to(device)
+    rot_y = torch.randn(2, 4).to(device)
+    rot_z = torch.randn(2, 4).to(device)
 
-    loss = all_loss_fn(points, voxel_grid, voxel_size, min_bound, near_point)
-    print("Total Loss:", loss.item())
+    all_loss_fn = AllLoss(device, weight=1.0).to(device)
+    loss = all_loss_fn(points, voxel, near_point, plane_x, plane_y, plane_z, rot_x, rot_y, rot_z)
+    print("Loss:", loss.item())

@@ -1,11 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 from pytorch3d.transforms import quaternion_multiply,quaternion_invert
-from mesh2voxel import create_voxel_grid
-from merge_mesh import merge_mesh
-import trimesh
 
 def chamfer_distance_manual(pc1, pc2):
     B, N, _ = pc1.shape
@@ -50,44 +46,37 @@ def get_sym(points,plane,rot):
     sym_points_rot=get_rot_sympoints(points,rot)
     return sym_points_plane,sym_points_rot
 
-def GetNearest(points,near_points,min_bound,voxel_size):
+def GetNearest(points,near_points):
     #points [b,n,3]
     #near_points[b,32,32,32,3]
     #min_bound [b,3]
     #voxel_size [b]
     #output: nearest_points [b,n,3]
     b, n, _ = points.shape
-    idx = torch.floor((points - min_bound.unsqueeze(1)) / voxel_size.view(b, 1, 1)).long()  # [b,n,3]
+    idx = (points +0.5)*32  # [b,n,3]
+    idx=idx.long()
     idx = torch.clamp(idx, 0, 31) 
     near_points_flat = near_points.view(b, -1, 3)  # [b, 32*32*32, 3]
     linear_idx = idx[..., 0] * 32 * 32 + idx[..., 1] * 32 + idx[..., 2]  # [b,n]
-    linear_idx = linear_idx.unsqueeze(-1).expand(-1, -1, 3)  # [b, n, 3]
-    nearest_points = torch.gather(near_points_flat, dim=1, index=linear_idx)  # [b, n, 3]
+    index = linear_idx.unsqueeze(-1).expand(-1, -1, 3)  # [b, n, 3]
+    nearest_points = torch.gather(near_points_flat, dim=1, index=index)  # [b, n, 3]
     return nearest_points
 
-def SymmetricLoss(points,near_points,min_bound,voxel_size):
+def SymmetricLoss(points,near_points):
     #points [b,n,3]
     #near_points[b,32,32,32,3]
-    #min_bound [b,3]
-    #voxel_size [b]
+    #voxel [b,32,32,32]
     #output: loss
-    nearest_points = GetNearest(points, near_points, min_bound, voxel_size)
+    b,_,_=points.shape
+    nearest_points = GetNearest(points, near_points)
     dis=points-nearest_points #[b,n,3]
     loss=torch.mean(torch.sum(torch.norm(dis,dim=2),dim=1))
-    return loss       
+    return loss
 
 if __name__ == "__main__":
     # Example usage
-    points = torch.randn(10, 1000, 3)  # [b, n, 3]
-    plane = torch.randn(10, 4)         # [b, 4]
-    rot = torch.randn(10, 4)           # [b, 4]
-
-    sym_points_plane, sym_points_rot = get_sym(points, plane, rot)
-    print("Symmetric Points (Plane):", sym_points_plane)
-    print("Symmetric Points (Rotation):", sym_points_rot)
-    # Example for SymmetricLoss
-    near_points = torch.randn(10, 32, 32, 32, 3)  # [b, 32, 32, 32, 3]
-    min_bound = torch.randn(10, 3)                # [b, 3]
-    voxel_size = torch.randn(10)                  # [b]
-    loss = SymmetricLoss(points, near_points, min_bound, voxel_size)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    points = torch.randn(10, 1024, 3).to(device)
+    near_points = torch.randn(10, 32, 32, 32, 3).to(device)
+    loss = SymmetricLoss(points, near_points)
     print("Symmetric Loss:", loss.item())
