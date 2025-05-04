@@ -65,7 +65,10 @@ for nearest,voxel,sampled in dataloader_test:
     print("plane_y:",plane_y)
     print("plane_z:",plane_z)
     if args.hasaxis:
-        print("rot_x:",rot_x)
-        print("rot_y:",rot_y)
-        print("rot_z:",rot_z)
+        axis_x,_= quaternion_to_axis_angle_batch(rot_x)
+        axis_y,_= quaternion_to_axis_angle_batch(rot_y)
+        axis_z,_= quaternion_to_axis_angle_batch(rot_z)
+        print("axis_x:",axis_x)
+        print("axis_y:",axis_y)
+        print("axis_z:",axis_z)
     
